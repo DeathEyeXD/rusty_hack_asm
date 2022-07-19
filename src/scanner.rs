@@ -10,22 +10,21 @@ impl ScanningError {
     fn new(message: &str, source: &str, start: usize, len: usize, line: usize) -> ScanningError {
         let highlight = Self::highlight(source, start, len, line);
         ScanningError{
-            message:  format!("{}\n     {}", highlight, message),
+            message:  format!("{}\n error: {}", highlight, message),
         }
     }
 
-    fn get_line_contents<'a>(source: &'a str, start: usize) -> (&'a str, usize){
-        let start = source[..start].bytes().rev().position(|c| c == b'\n').unwrap_or(0);
-        let end = source[start..].bytes().position(|c| c == b'\n').unwrap_or_else(|| start.saturating_sub(1));
+    fn get_line_contents(source: &str, start: usize) -> (&str, usize){
+        let from = start - source[..start].bytes().rev().position(|c| c == b'\n').unwrap_or(start);
+        let to = source[from..].bytes().position(|c| c == b'\n').unwrap_or(0) + from;
         
-        (&source[start..end], start)
+        (&source[from..to], from)
     }
 
     fn highlight(source: &str, start: usize, len: usize, line: usize) -> String{
-        let lexeme = &source[start..start+len];
         let (line_contents, line_start) = Self::get_line_contents(source, start);
-        let padding_len = line / 100 + 4 + start - line_start; 
-        format!("{} | {}\n", line, line_contents) + line_contents + &format!("{}{}--here"," ".repeat(padding_len) ,"^".repeat(len))
+        let padding_len = line / 10 + 4 + start - line_start; 
+        format!("{} | {}\n", line, line_contents) + &format!("{}{}--here"," ".repeat(padding_len) ,"^".repeat(len))
     }
 }
 impl std::fmt::Display for ScanningError{
@@ -36,7 +35,7 @@ impl std::fmt::Display for ScanningError{
 
 }
 
-struct Scanner{
+pub struct Scanner{
     source: String,
     tokens: Vec<Token>,
     curr: usize,
@@ -47,7 +46,7 @@ struct Scanner{
 
 impl Scanner {
 
-    fn with_source(source: String) -> Scanner{
+    pub fn with_source(source: String) -> Scanner{
         Scanner {
             source,
             tokens: Vec::new(),
@@ -58,7 +57,7 @@ impl Scanner {
         }
     }
 
-    fn from_path(path: &str) -> crate::Result<Scanner> {
+    pub fn from_path(path: &str) -> crate::Result<Scanner> {
         let source = fs::read_to_string(path)?;
         Ok(Scanner::with_source(source))
     }
@@ -138,7 +137,7 @@ impl Scanner {
         }
     }
 
-    fn scan_token(&mut self){
+    pub fn scan_token(&mut self){
         let char = self.advance();
         match char {
             b'@' => self.add_token(token::TokenType::At),
@@ -151,7 +150,7 @@ impl Scanner {
                 if self.match_next(b'/') {
                 self.skip_comment();
                 } else { 
-                    self.raise_error("Unexpected character")
+                    self.raise_error("Unexpected character, did you mean '//'?")
                 }
             },
             b';' => self.add_token(token::TokenType::Semicolon),
@@ -165,13 +164,13 @@ impl Scanner {
                 } else if char.is_ascii_alphabetic() {
                     self.identifier()
                 } else{
-                    //TODO raise an error
+                    self.raise_error("Unexpected character")
                 }
             }
         }
     }
 
-    fn scan_tokens(&mut self) -> &Vec<Token> {
+    pub fn scan_tokens(&mut self) -> &Vec<Token> {
         while !self.is_at_end() {
             self.start = self.curr;
             self.scan_token();
@@ -180,12 +179,23 @@ impl Scanner {
         &self.tokens
     }
 
-    fn had_errors(&self) -> bool {
+    pub fn had_errors(&self) -> bool {
         !self.errors.is_empty()
     }
 
     fn raise_error(&mut self, message: &str){
         self.errors.push(ScanningError::new(message, &self.source, self.start, self.curr-self.start, self.line));
+    }
+
+    pub fn print_errors(&self){
+        if !self.had_errors(){
+            return
+        }
+        for error in &self.errors[..self.errors.len()-1] {
+            eprintln!("{}\n", error);
+        }
+        eprintln!("{}", self.errors[self.errors.len()-1]);
+        eprintln!("Encountered {} errors, aborting", self.errors.len());
     }
 }
 
