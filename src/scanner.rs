@@ -1,7 +1,7 @@
 use std::fs;
 
 use self::token::Token;
-mod token;
+pub mod token;
 
 struct ScanningError{
     message: String,
@@ -72,7 +72,7 @@ impl Scanner {
         char
     }
 
-    fn add_token(& mut self, token_type: token::TokenType) {
+    fn add_token(& mut self, token_type: token::TokenKind) {
         let token = Token::new(token_type, self.line, self.start);
         self.tokens.push(token);
     }
@@ -100,7 +100,7 @@ impl Scanner {
             self.advance();
         }
         let literal: usize = self.curr_lexeme().parse().unwrap();
-        self.add_token(token::TokenType::Number(literal));
+        self.add_token(token::TokenKind::Number(literal));
     }
 
     fn curr_lexeme(&self) -> &str {
@@ -112,21 +112,21 @@ impl Scanner {
             self.advance();
         }
         let token_type = match self.curr_lexeme()  {
-            "M" => token::TokenType::M,
-            "D" => token::TokenType::D,
-            "MD" => token::TokenType::Md,
-            "A" => token::TokenType::A,
-            "AM" => token::TokenType::Am,
-            "AD" => token::TokenType::Ad,
-            "AMD" => token::TokenType::AMd,
-            "JGT" => token::TokenType::Jgt,
-            "JEQ" => token::TokenType::Jeq,
-            "JGE" => token::TokenType::Jge,
-            "JLT" => token::TokenType::Jlt,
-            "JNE" => token::TokenType::Jne,
-            "JLE" => token::TokenType::Jle,
-            "JMP" => token::TokenType::Jmp,
-            _ => token::TokenType::Identifier(self.curr_lexeme().to_string()),
+            "M" => token::TokenKind::M,
+            "D" => token::TokenKind::D,
+            "MD" => token::TokenKind::Md,
+            "A" => token::TokenKind::A,
+            "AM" => token::TokenKind::Am,
+            "AD" => token::TokenKind::Ad,
+            "AMD" => token::TokenKind::AMd,
+            "JGT" => token::TokenKind::Jgt,
+            "JEQ" => token::TokenKind::Jeq,
+            "JGE" => token::TokenKind::Jge,
+            "JLT" => token::TokenKind::Jlt,
+            "JNE" => token::TokenKind::Jne,
+            "JLE" => token::TokenKind::Jle,
+            "JMP" => token::TokenKind::Jmp,
+            _ => token::TokenKind::Identifier(self.curr_lexeme().to_string()),
         };
         self.add_token(token_type);
     }
@@ -140,12 +140,15 @@ impl Scanner {
     pub fn scan_token(&mut self){
         let char = self.advance();
         match char {
-            b'@' => self.add_token(token::TokenType::At),
-            b'=' => self.add_token(token::TokenType::Equals),
-            b'+' => self.add_token(token::TokenType::Plus),
-            b'-' => self.add_token(token::TokenType::Minus),
-            b'(' => self.add_token(token::TokenType::LeftParen),
-            b')' => self.add_token(token::TokenType::RightParen),
+            b'@' => self.add_token(token::TokenKind::At),
+            b'=' => self.add_token(token::TokenKind::Equals),
+            b'+' => self.add_token(token::TokenKind::Plus),
+            b'-' => self.add_token(token::TokenKind::Minus),
+            b'|' => self.add_token(token::TokenKind::Or),
+            b'&' => self.add_token(token::TokenKind::And),
+            b'!' => self.add_token(token::TokenKind::Not),
+            b'(' => self.add_token(token::TokenKind::LeftParen),
+            b')' => self.add_token(token::TokenKind::RightParen),
             b'/' => {
                 if self.match_next(b'/') {
                 self.skip_comment();
@@ -153,7 +156,7 @@ impl Scanner {
                     self.raise_error("Unexpected character, did you mean '//'?")
                 }
             },
-            b';' => self.add_token(token::TokenType::Semicolon),
+            b';' => self.add_token(token::TokenKind::Semicolon),
             b'\n' => {
                 self.line += 1;
             }
@@ -175,7 +178,7 @@ impl Scanner {
             self.start = self.curr;
             self.scan_token();
         }
-        self.tokens.push(Token::new(token::TokenType::Eof, self.line, self.start));
+        self.tokens.push(Token::new(token::TokenKind::Eof, self.line, self.start));
         &self.tokens
     }
 
