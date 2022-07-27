@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[derive(Clone, PartialEq, Eq)]
 pub enum TokenKind{
     //Symbols
     LeftParen,
@@ -40,6 +41,7 @@ pub enum TokenKind{
     Number(usize),
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct Token{
     pub kind: TokenKind,
     pub line: usize,
