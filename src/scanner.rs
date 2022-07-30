@@ -1,52 +1,22 @@
 use std::fs;
 
+use crate::{Error, error_formatting::ErrorFormatter};
+
 use self::token::Token;
 pub mod token;
 
-struct ScanningError{
-    message: String,
-}
-impl ScanningError {
-    fn new(message: &str, source: &str, start: usize, len: usize, line: usize) -> ScanningError {
-        let highlight = Self::highlight(source, start, len, line);
-        ScanningError{
-            message:  format!("{}\n error: {}", highlight, message),
-        }
-    }
 
-    fn get_line_contents(source: &str, start: usize) -> (&str, usize){
-        let from = start - source[..start].bytes().rev().position(|c| c == b'\n').unwrap_or(start);
-        let to = source[from..].bytes().position(|c| c == b'\n').unwrap_or(0) + from;
-        
-        (&source[from..to], from)
-    }
-
-    fn highlight(source: &str, start: usize, len: usize, line: usize) -> String{
-        let (line_contents, line_start) = Self::get_line_contents(source, start);
-        let padding_len = line / 10 + 4 + start - line_start; 
-        format!("{} | {}\n", line, line_contents) + &format!("{}{}--here"," ".repeat(padding_len) ,"^".repeat(len))
-    }
-}
-impl std::fmt::Display for ScanningError{
-
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}",self.message)
-    }
-
-}
-
-pub struct Scanner{
+pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
     curr: usize,
     start: usize,
     line: usize,
-    errors: Vec<ScanningError>,
+    errors: Vec<Error>,
 }
 
 impl Scanner {
-
-    pub fn with_source(source: String) -> Scanner{
+    pub fn with_source(source: String) -> Scanner {
         Scanner {
             source,
             tokens: Vec::new(),
@@ -72,12 +42,12 @@ impl Scanner {
         char
     }
 
-    fn add_token(& mut self, token_type: token::TokenKind) {
+    fn add_token(&mut self, token_type: token::TokenKind) {
         let token = Token::new(token_type, self.line, self.start);
         self.tokens.push(token);
     }
 
-    fn peek(&self) -> u8{
+    fn peek(&self) -> u8 {
         if self.is_at_end() {
             b'\0'
         } else {
@@ -85,7 +55,7 @@ impl Scanner {
         }
     }
 
-    fn match_next(&mut self, expected: u8) -> bool{
+    fn match_next(&mut self, expected: u8) -> bool {
         if self.is_at_end() {
             return false;
         }
@@ -107,11 +77,11 @@ impl Scanner {
         &self.source[self.start..self.curr]
     }
 
-    fn identifier(&mut self){
-        while self.peek().is_ascii_alphanumeric(){
+    fn identifier(&mut self) {
+        while self.peek().is_ascii_alphanumeric() {
             self.advance();
         }
-        let token_type = match self.curr_lexeme()  {
+        let token_type = match self.curr_lexeme() {
             "M" => token::TokenKind::M,
             "D" => token::TokenKind::D,
             "MD" => token::TokenKind::Md,
@@ -131,13 +101,13 @@ impl Scanner {
         self.add_token(token_type);
     }
 
-    fn skip_comment(&mut self){
+    fn skip_comment(&mut self) {
         while self.peek() != b'\n' && !self.is_at_end() {
             self.advance();
         }
     }
 
-    pub fn scan_token(&mut self){
+    pub fn scan_token(&mut self) {
         let char = self.advance();
         match char {
             b'@' => self.add_token(token::TokenKind::At),
@@ -151,14 +121,15 @@ impl Scanner {
             b')' => self.add_token(token::TokenKind::RightParen),
             b'/' => {
                 if self.match_next(b'/') {
-                self.skip_comment();
-                } else { 
+                    self.skip_comment();
+                } else {
                     self.raise_error("Unexpected character, did you mean '//'?")
                 }
-            },
+            }
             b';' => self.add_token(token::TokenKind::Semicolon),
             b'\n' => {
                 self.line += 1;
+                self.add_token(token::TokenKind::NewLine);
             }
             b' ' | b'\r' | b'\t' => {}
             _ => {
@@ -166,7 +137,7 @@ impl Scanner {
                     self.number();
                 } else if char.is_ascii_alphabetic() {
                     self.identifier()
-                } else{
+                } else {
                     self.raise_error("Unexpected character")
                 }
             }
@@ -178,7 +149,8 @@ impl Scanner {
             self.start = self.curr;
             self.scan_token();
         }
-        self.tokens.push(Token::new(token::TokenKind::Eof, self.line, self.start));
+        self.tokens
+            .push(Token::new(token::TokenKind::Eof, self.line, self.start));
         &self.tokens
     }
 
@@ -186,19 +158,24 @@ impl Scanner {
         !self.errors.is_empty()
     }
 
-    fn raise_error(&mut self, message: &str){
-        self.errors.push(ScanningError::new(message, &self.source, self.start, self.curr-self.start, self.line));
+    fn raise_error(&mut self, message: &str) {
+        self.errors.push(ErrorFormatter::gen_err(
+            message,
+            &self.source,
+            self.start,
+            self.curr - self.start,
+            self.line,
+        ));
     }
 
-    pub fn print_errors(&self){
-        if !self.had_errors(){
-            return
+    pub fn print_errors(&self) {
+        if !self.had_errors() {
+            return;
         }
-        for error in &self.errors[..self.errors.len()-1] {
+        for error in &self.errors[..self.errors.len() - 1] {
             eprintln!("{}\n", error);
         }
-        eprintln!("{}", self.errors[self.errors.len()-1]);
+        eprintln!("{}", self.errors[self.errors.len() - 1]);
         eprintln!("Encountered {} errors, aborting", self.errors.len());
     }
 }
-

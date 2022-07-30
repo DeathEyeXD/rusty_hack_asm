@@ -7,7 +7,9 @@ pub enum TokenKind{
     RightParen,
      
     Semicolon,
+    // Artificial
     Eof,
+    NewLine,
     // operators
     At,
     Equals,
@@ -73,7 +75,7 @@ impl Token{
             TokenKind::Jle => "110".to_string(),
             TokenKind::Jmp => "111".to_string(),
             TokenKind::Number(n) => format!("{:#016b}", n),
-            _ => panic!("{}", format!("Cannot convert '{}' to heck binary", self.to_string())),
+            _ => panic!("{}", format!("Cannot convert '{}' to heck binary", self)),
         }
     }
 }
@@ -86,6 +88,7 @@ impl Display for Token{
             TokenKind::RightParen => write!(f, "RightParen"),
             TokenKind::Semicolon => write!(f, "Semicolon"),
             TokenKind::Eof => write!(f, "Eof"),
+            TokenKind::NewLine => write!(f, "NewLine"),
             TokenKind::At => write!(f, "At"),
             TokenKind::Equals => write!(f, "Equals"),
             TokenKind::Plus => write!(f, "Plus"),
