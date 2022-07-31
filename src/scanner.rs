@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::{Error, error_formatting::ErrorFormatter};
+use crate::{Result, Error, error_formatting::ErrorFormatter, parser::Parser};
 
 use self::token::Token;
 pub mod token;
@@ -144,14 +144,24 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> &Vec<Token> {
+    pub fn scan_tokens(&mut self) -> bool {
         while !self.is_at_end() {
             self.start = self.curr;
             self.scan_token();
         }
         self.tokens
             .push(Token::new(token::TokenKind::Eof, self.line, self.start));
-        &self.tokens
+
+        self.errors.is_empty()
+    }
+
+    pub fn run(mut self) -> Result<Parser>{
+        if self.scan_tokens() {
+            Ok(self.into_parser())
+        } else {
+            self.print_errors();
+            Err(Error::from(format!("Encountered {} errors, aborting compilation", self.errors.len())))
+        }
     }
 
     pub fn had_errors(&self) -> bool {
@@ -177,5 +187,9 @@ impl Scanner {
         }
         eprintln!("{}", self.errors[self.errors.len() - 1]);
         eprintln!("Encountered {} errors, aborting", self.errors.len());
+    }
+
+    fn into_parser(self) -> Parser{
+        Parser::new(self.tokens, self.source)
     }
 }

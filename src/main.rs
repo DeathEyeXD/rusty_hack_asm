@@ -18,15 +18,10 @@ fn file_path() -> String {
 
 fn run() -> Result<()> {
     let path = file_path();
-    let mut scanner = scanner::Scanner::from_path(&path)?;
+    let scanner = scanner::Scanner::from_path(&path)?;
 
-    let tokens = scanner.scan_tokens();
-
-    for token in tokens {
-        println!("{}", token);
-    }
-
-    scanner.print_errors();
-
+    let parser = scanner.run()?;
+    
+    
     Ok(())
 }

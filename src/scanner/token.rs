@@ -1,11 +1,11 @@
 use std::fmt::Display;
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum TokenKind{
+pub enum TokenKind {
     //Symbols
     LeftParen,
     RightParen,
-     
+
     Semicolon,
     // Artificial
     Eof,
@@ -43,23 +43,51 @@ pub enum TokenKind{
     Number(usize),
 }
 
+impl TokenKind {
+    pub fn is_jump_keyword(&self) -> bool {
+        match self {
+            TokenKind::Jgt
+            | TokenKind::Jeq
+            | TokenKind::Jge
+            | TokenKind::Jlt
+            | TokenKind::Jne
+            | TokenKind::Jle
+            | TokenKind::Jmp => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_dest_keyword(&self) -> bool {
+        match self {
+            TokenKind::M
+            | TokenKind::D
+            | TokenKind::Md
+            | TokenKind::A
+            | TokenKind::Am
+            | TokenKind::Ad
+            | TokenKind::AMd => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq)]
-pub struct Token{
+pub struct Token {
     pub kind: TokenKind,
     pub line: usize,
     pub start: usize,
 }
 
-impl Token{
-    pub fn new(token_type: TokenKind, line: usize, start: usize) -> Token{
-        Token{
+impl Token {
+    pub fn new(token_type: TokenKind, line: usize, start: usize) -> Token {
+        Token {
             kind: token_type,
             line,
             start,
         }
     }
-    pub fn to_binary(&self) -> String{
-        match self.kind{
+    pub fn to_binary(&self) -> String {
+        match self.kind {
             TokenKind::M => "111".to_string(),
             TokenKind::D => "110".to_string(),
             TokenKind::Md => "111".to_string(),
@@ -80,9 +108,9 @@ impl Token{
     }
 }
 
-impl Display for Token{
+impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f,"token<")?;
+        write!(f, "token<")?;
         match &self.kind {
             TokenKind::LeftParen => write!(f, "LeftParen"),
             TokenKind::RightParen => write!(f, "RightParen"),
@@ -112,7 +140,6 @@ impl Display for Token{
             TokenKind::Jmp => write!(f, "Jmp"),
             TokenKind::Identifier(s) => write!(f, "Identifier: {}", s),
             TokenKind::Number(n) => write!(f, "Number: {}", n),
-        
         }?;
         write!(f, ">")
     }

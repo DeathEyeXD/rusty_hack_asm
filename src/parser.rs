@@ -10,7 +10,7 @@ use crate::{
 mod ast;
 
 struct ParsingError {}
-struct Parser {
+pub struct Parser {
     source: String,
     tokens: Vec<Token>,
     curr: usize,
@@ -30,29 +30,47 @@ impl Parser {
         }
     }
 
-    pub fn statement(&mut self) -> Option<Statement> {
-        match self.peek().kind {
-            token::TokenKind::LeftParen => unimplemented!(),
+    pub fn parse(&mut self) -> bool{ // true means succesfull parsing
+        while !self.is_at_end() {
+           self.statement(); 
+        }
+        self.errors.is_empty()
+    }
+
+    pub fn had_errors(self) -> bool{
+        !self.errors.is_empty()
+    }
+
+    fn statement(&mut self) {
+        let statement = match self.peek().kind {
+            token::TokenKind::LeftParen => self.label_declaration(),
             _ => self.instruction().map(Statement::Instruction),
+        };
+
+        if let Some(statement) = statement{
+            if self.consume_line_end("Unexpected token after statement, use line feed to separate statements").is_none(){
+                return
+            }
+            self.statements.push(statement);
+        }else{
+            self.synchronise();
         }
     }
 
+    fn label_declaration(&mut self) -> Option<Statement> {
+        let label = self.consume_identifier("Expected label name after '('")?;
+        self.consume(
+            "Expected ')' after label name",
+            token::TokenKind::RightParen,
+        )?;
+        Some(Statement::LabelDecl(label))
+    }
+
     fn instruction(&mut self) -> Option<HackInstruction> {
-        let ins = if self.check(token::TokenKind::At) {
+        if self.check(token::TokenKind::At) {
             self.a_instruction()
         } else {
             self.c_instruction()
-        };
-
-        if let Some(ins) = ins {
-            self.consume(
-                "Unexpected token after instruction",
-                token::TokenKind::NewLine,
-            );
-            Some(ins)
-        } else {
-            self.synchronise();
-            None
         }
     }
 
@@ -64,10 +82,10 @@ impl Parser {
                 if num > Self::MAX_ADDRESS {
                     self.raise_error_curr(
                         &format!(
-                        "Address out of range, max allowed value is {}",
+                            "Address out of range, max allowed value is {}",
                             Self::MAX_ADDRESS
-                    ) //its not a unrecoverable error, so we don't return None, but we report the error so it won't compile
-                );
+                        ), //its not a error that requires synchronising, so we don't return None, but we report the error so it won't compile
+                    );
                 }
             }
             _ => {
@@ -83,13 +101,38 @@ impl Parser {
             self.advance();
             Some(self.previous())
         } else {
-            self.raise_error_peak(msg);
+            self.raise_error_peek(msg);
+            None
+        }
+    }
+
+    fn consume_line_end(&mut self, msg: &str) -> Option<&Token>{
+        if self.check_line_end(){
+            self.advance();
+            Some(self.previous())
+        }else{
+            self.raise_error_peek(msg);
+            None
+        }
+    }
+
+    fn check_line_end(&mut self) -> bool{
+        matches!(self.peek().kind, token::TokenKind::NewLine | token::TokenKind::Eof )
+    }
+
+    fn consume_identifier(&mut self, msg: &str) -> Option<String> {
+        if let token::TokenKind::Identifier(identifier) = &self.peek().kind {
+            let identifier = identifier.clone();
+            self.advance();
+            Some(identifier)
+        } else {
+            self.raise_error_peek(msg);
             None
         }
     }
 
     fn synchronise(&mut self) {
-        while !self.check(token::TokenKind::NewLine) {
+        while !self.check_line_end(){
             self.advance();
         }
         self.advance(); //skip newline token
@@ -97,14 +140,23 @@ impl Parser {
 
     fn c_instruction(&mut self) -> Option<HackInstruction> {
         let dest = if self.check(token::TokenKind::Equals) {
-            self.advance();
+            if !self.token().kind.is_dest_keyword() {
+                self.raise_error_curr("Expected destination after '='");
+                return None;
+            }
+            self.advance(); // skip '=""
+            self.advance(); // skip destination
             Some(self.previous().clone())
         } else {
             None
         };
         let comp = self.comp()?;
         let jump = if self.check(token::TokenKind::Semicolon) {
-            self.advance();
+            self.advance(); //skip semicolon
+            if !self.previous().kind.is_jump_keyword(){
+                self.raise_error_curr("Expected jump keyword after ';'");
+                return None;
+            }
             Some(self.previous().clone())
         } else {
             None
@@ -120,7 +172,15 @@ impl Parser {
             .iter()
             .map(|token| token.kind.clone())
             .collect::<Vec<token::TokenKind>>();
-        Comp::from_tokens(tokens)
+        let comp = Comp::from_tokens(tokens);
+        if comp.is_none() {
+            self.raise_comp_error(comp_len);
+        }
+        comp
+    }
+
+    fn raise_comp_error(&mut self, comp_len: usize){
+        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr, comp_len, self.token().line))
     }
 
     fn is_at_end(&self) -> bool {
@@ -155,7 +215,7 @@ impl Parser {
     fn raise_error_curr(&mut self, msg: &str) {
         self.raise_error(msg, self.curr);
     }
-    fn raise_error_peak(&mut self, msg: &str) {
+    fn raise_error_peek(&mut self, msg: &str) {
         self.raise_error(msg, self.curr + 1);
     }
 }
