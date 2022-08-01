@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TokenKind {
     //Symbols
     LeftParen,
@@ -71,7 +71,7 @@ impl TokenKind {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub line: usize,

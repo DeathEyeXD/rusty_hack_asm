@@ -129,7 +129,11 @@ impl Scanner {
             b';' => self.add_token(token::TokenKind::Semicolon),
             b'\n' => {
                 self.line += 1;
-                self.add_token(token::TokenKind::NewLine);
+                if let Some(t) = self.tokens.last() {
+                    if t.kind != token::TokenKind::NewLine {
+                        self.add_token(token::TokenKind::NewLine);
+                    }
+                }
             }
             b' ' | b'\r' | b'\t' => {}
             _ => {
@@ -155,8 +159,18 @@ impl Scanner {
         self.errors.is_empty()
     }
 
+    fn print_tokens(&self) {
+        for token in &self.tokens {
+            println!("{}", token);
+            if token.kind == token::TokenKind::NewLine {
+                println!();
+            }
+        }
+    }
+
     pub fn run(mut self) -> Result<Parser>{
         if self.scan_tokens() {
+            self.print_tokens();
             Ok(self.into_parser())
         } else {
             self.print_errors();

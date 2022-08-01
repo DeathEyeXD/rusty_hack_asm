@@ -1,15 +1,14 @@
 use std::cmp;
 
-use self::ast::{CInstruction, Comp, HackInstruction, Statement};
+use crate::ast::{CInstruction, Comp, HackInstruction, Statement};
+use crate::evaluator::Evaluator;
 use crate::{
     error_formatting::ErrorFormatter,
     scanner::token::{self, Token},
     Error,
+    Result
 };
 
-mod ast;
-
-struct ParsingError {}
 pub struct Parser {
     source: String,
     tokens: Vec<Token>,
@@ -27,6 +26,27 @@ impl Parser {
             curr: 0,
             errors: Vec::new(),
             statements: Vec::new(),
+        }
+    }
+
+    pub fn run(mut self) -> Result<Evaluator>{
+        if !self.parse(){
+            self.print_errors();
+            return Err(Error::from(format!("Encountered {}, errors, aborting compilation.", self.errors.len())));
+        }
+        for statement in &self.statements{
+            println!("{:?}", statement);
+        }
+        Ok(Evaluator::new(self.statements.into_iter().map(|s| match s{
+            Statement::Instruction(i) => i,
+            Statement::LabelDecl(_) => unimplemented!(),}
+
+        ).collect()))
+    }
+
+    fn print_errors(&self) {
+        for error in &self.errors {
+            eprintln!("{}", error);
         }
     }
 
@@ -76,11 +96,12 @@ impl Parser {
 
     fn a_instruction(&mut self) -> Option<HackInstruction> {
         self.advance(); //skip @ token
-        match self.token().kind {
-            token::TokenKind::Identifier(..) => {}
+        match self.peek().kind {
+            token::TokenKind::Identifier(..) => {unimplemented!()}
             token::TokenKind::Number(num) => {
+                self.advance();
                 if num > Self::MAX_ADDRESS {
-                    self.raise_error_curr(
+                    self.raise_error_prev(
                         &format!(
                             "Address out of range, max allowed value is {}",
                             Self::MAX_ADDRESS
@@ -89,11 +110,11 @@ impl Parser {
                 }
             }
             _ => {
-                self.raise_error_curr("Expected identifier or number after '@'");
+                self.raise_error_prev("Expected identifier or number after '@'");
                 return None;
             } //todo raise an error
         }
-        Some(HackInstruction::AInstruction(self.token().clone()))
+        Some(HackInstruction::AInstruction(self.previous().clone()))
     }
 
     fn consume(&mut self, msg: &str, expected: token::TokenKind) -> Option<&Token> {
@@ -139,24 +160,26 @@ impl Parser {
     }
 
     fn c_instruction(&mut self) -> Option<HackInstruction> {
+        self.advance(); 
         let dest = if self.check(token::TokenKind::Equals) {
-            if !self.token().kind.is_dest_keyword() {
-                self.raise_error_curr("Expected destination after '='");
+            if !self.previous().kind.is_dest_keyword() {
+                self.raise_error_prev("Expected destination after '='");
                 return None;
             }
-            self.advance(); // skip '=""
-            self.advance(); // skip destination
-            Some(self.previous().clone())
+            let t = self.previous().clone();
+            self.advance(); // skip '='
+            Some(t)
         } else {
             None
         };
         let comp = self.comp()?;
         let jump = if self.check(token::TokenKind::Semicolon) {
             self.advance(); //skip semicolon
-            if !self.previous().kind.is_jump_keyword(){
-                self.raise_error_curr("Expected jump keyword after ';'");
+            if !self.peek().kind.is_jump_keyword(){
+                self.raise_error_peek("Expected jump keyword after ';'");
                 return None;
             }
+            self.advance();
             Some(self.previous().clone())
         } else {
             None
@@ -167,20 +190,25 @@ impl Parser {
     }
 
     fn comp(&mut self) -> Option<Comp> {
-        let comp_len = cmp::min(3, self.tokens.len() - self.curr);
-        let tokens = &self.tokens[self.curr..self.curr + comp_len]
+        let max_comp_len = cmp::min(3, self.tokens.len() - self.curr);
+        let tokens = &self.tokens[self.curr..self.curr + max_comp_len]
             .iter()
             .map(|token| token.kind.clone())
             .collect::<Vec<token::TokenKind>>();
         let comp = Comp::from_tokens(tokens);
-        if comp.is_none() {
-            self.raise_comp_error(comp_len);
+        if let Some(comp) = comp {
+            for _ in 0..comp.len() {
+                self.advance();
+            }
+            Some(comp)
+        }else{
+            self.raise_comp_error(max_comp_len);
+            None
         }
-        comp
     }
 
     fn raise_comp_error(&mut self, comp_len: usize){
-        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr, comp_len, self.token().line))
+        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr, comp_len, self.peek().line))
     }
 
     fn is_at_end(&self) -> bool {
@@ -190,15 +218,11 @@ impl Parser {
         matches!(&self.peek().kind, x if *x == token_kind)
     }
 
-    fn peek(&self) -> &Token {
-        &self.tokens[self.curr + 1]
-    }
-
     fn previous(&self) -> &Token {
         &self.tokens[self.curr - 1]
     }
 
-    fn token(&self) -> &Token {
+    fn peek(&self) -> &Token {
         &self.tokens[self.curr]
     }
 
@@ -212,7 +236,7 @@ impl Parser {
         self.errors
             .push(ErrorFormatter::err_from_token(msg, &self.source, token));
     }
-    fn raise_error_curr(&mut self, msg: &str) {
+    fn raise_error_prev(&mut self, msg: &str) {
         self.raise_error(msg, self.curr);
     }
     fn raise_error_peek(&mut self, msg: &str) {
