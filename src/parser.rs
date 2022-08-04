@@ -168,6 +168,7 @@ impl Parser {
             }
             let t = self.previous().clone();
             self.advance(); // skip '='
+            self.advance();
             Some(t)
         } else {
             None
@@ -190,14 +191,15 @@ impl Parser {
     }
 
     fn comp(&mut self) -> Option<Comp> {
-        let max_comp_len = cmp::min(3, self.tokens.len() - self.curr);
-        let tokens = &self.tokens[self.curr..self.curr + max_comp_len]
+        let start = self.curr - 1;
+        let max_comp_len = cmp::min(3, self.tokens.len() - start);
+        let tokens = &self.tokens[start..start + max_comp_len]
             .iter()
             .map(|token| token.kind.clone())
             .collect::<Vec<token::TokenKind>>();
         let comp = Comp::from_tokens(tokens);
         if let Some(comp) = comp {
-            for _ in 0..comp.len() {
+            for _ in 0..comp.len() - 1 {
                 self.advance();
             }
             Some(comp)
@@ -208,7 +210,7 @@ impl Parser {
     }
 
     fn raise_comp_error(&mut self, comp_len: usize){
-        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr, comp_len, self.peek().line))
+        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr - 1, comp_len, self.peek().line))
     }
 
     fn is_at_end(&self) -> bool {

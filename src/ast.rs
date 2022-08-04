@@ -208,7 +208,7 @@ impl HackInstruction {
                     &cinst
                         .dest
                         .as_ref()
-                        .map_or(String::from("000000"), |token| token.to_binary()),
+                        .map_or(String::from("000"), |token| token.to_binary()),
                 );
                 binary.push_str(
                     &cinst

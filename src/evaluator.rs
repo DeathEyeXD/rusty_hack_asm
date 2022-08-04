@@ -16,8 +16,12 @@ impl Evaluator {
     }
 
     pub fn evaluate(&self) -> String{
-        let output: Vec<String> = self.instructions.iter().map(|instruction| instruction.to_binary()).collect();
-        output.join("\r\n")
+        let mut output = String::new();
+        for i in &self.instructions{
+            output.push_str(&i.to_binary());
+            output.push_str("\r\n");
+        }
+        output
     }
 
     fn get_output_filename(&self, mut filename: &str) -> String{
