@@ -16,15 +16,11 @@ impl Evaluator {
     }
 
     pub fn evaluate(&self) -> String{
-        let mut output = String::new();
-        for instruction in &self.instructions {
-            output.push_str(&instruction.to_binary());
-            output.push('\n');
-        }
-        output
+        let output: Vec<String> = self.instructions.iter().map(|instruction| instruction.to_binary()).collect();
+        output.join("\r\n")
     }
 
-    fn get_output_file(&self, mut filename: &str) -> String{
+    fn get_output_filename(&self, mut filename: &str) -> String{
         for (id, char) in filename.chars().rev().enumerate() {
             match char {
                 '.' => {
@@ -41,7 +37,7 @@ impl Evaluator {
     }
 
     pub fn gen_output_file(self, source: &str) -> Result<()>{
-        fs::write(self.get_output_file(source), self.evaluate())?;
+        fs::write(self.get_output_filename(source), self.evaluate())?;
         Ok(())
     }
 }

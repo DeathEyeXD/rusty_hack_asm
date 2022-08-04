@@ -1,31 +1,16 @@
-mod scanner;
-mod parser;
-mod error_formatting;
-mod evaluator;
-mod ast;
+use hack_asm::run;
+use hack_asm::Result;
+use hack_asm::Error;
 
-
-pub type Error = Box<dyn std::error::Error>;
-pub type Result<T> = std::result::Result<T, Error>;
 fn main() -> Result<()> {
-    run()
+    let path = file_path()?;
+    run(path)
 }
 
-fn file_path() -> String {
+fn file_path() -> Result<String> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
-        panic!("Usage: assembler <path>");
+        return Err(Error::from("No file specified. Usage: hack_asm <file>"));
     }
-    args.into_iter().nth(1).unwrap()
-}
-
-fn run() -> Result<()> {
-    let path = file_path();
-    let scanner = scanner::Scanner::from_path(&path)?;
-
-    let parser = scanner.run()?;
-    let evaluator = parser.run()?;
-
-    evaluator.gen_output_file(&path)
-    
+    Ok(args.into_iter().nth(1).unwrap())
 }

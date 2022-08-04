@@ -45,29 +45,23 @@ pub enum TokenKind {
 
 impl TokenKind {
     pub fn is_jump_keyword(&self) -> bool {
-        match self {
-            TokenKind::Jgt
+        matches!(self, TokenKind::Jgt
             | TokenKind::Jeq
             | TokenKind::Jge
             | TokenKind::Jlt
             | TokenKind::Jne
             | TokenKind::Jle
-            | TokenKind::Jmp => true,
-            _ => false,
-        }
+            | TokenKind::Jmp)
     }
 
     pub fn is_dest_keyword(&self) -> bool {
-        match self {
-            TokenKind::M
+        matches!(self, TokenKind::M
             | TokenKind::D
             | TokenKind::Md
             | TokenKind::A
             | TokenKind::Am
             | TokenKind::Ad
-            | TokenKind::AMd => true,
-            _ => false,
-        }
+            | TokenKind::AMd)
     }
 }
 
@@ -88,13 +82,15 @@ impl Token {
     }
     pub fn to_binary(&self) -> String {
         match self.kind {
-            TokenKind::M => "111".to_string(),
-            TokenKind::D => "110".to_string(),
-            TokenKind::Md => "111".to_string(),
+            // A-bit, D-bit, M-bit
+            TokenKind::M => "001".to_string(),
+            TokenKind::D => "010".to_string(),
+            TokenKind::Md => "011".to_string(),
             TokenKind::A => "100".to_string(),
             TokenKind::Am => "101".to_string(),
             TokenKind::Ad => "110".to_string(),
             TokenKind::AMd => "111".to_string(),
+            
             TokenKind::Jgt => "001".to_string(),
             TokenKind::Jeq => "010".to_string(),
             TokenKind::Jge => "011".to_string(),
