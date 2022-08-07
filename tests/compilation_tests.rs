@@ -20,7 +20,6 @@ fn compare(base_filename: &str) -> Result<()> {
 
 
     assert!(fs::read_to_string(&bin_file)? == fs::read_to_string(&expected_file)? , "generated file {}.asm does not match expected data", base_filename);
-    // fs::remove_file(&expected_file)?;
     Ok(())
 }
 
@@ -37,4 +36,9 @@ fn test_compilation_max_symboless() -> Result<()> {
 #[test]
 fn test_compilation_pong_symbolless() -> Result<()> {
     compile_and_compare("PongL")
+}
+
+#[test]
+fn test_compilation_rect_symbolless() -> Result<()> {
+    compile_and_compare("RectL")
 }

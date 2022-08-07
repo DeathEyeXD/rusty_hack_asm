@@ -1,4 +1,6 @@
 /target
 .vscode/launch.json
-Add.asm
-Add.hack
+*.hack
+*.asm
+!**/asm/*.asm
+!**/expected/*.hack
