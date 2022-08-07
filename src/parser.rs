@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub struct Parser {
-    source: String,
+    source: Vec<String>,
     tokens: Vec<Token>,
     curr: usize,
     errors: Vec<Error>,
@@ -19,7 +19,7 @@ pub struct Parser {
 
 impl Parser {
     const MAX_ADDRESS: usize = 32767;
-    pub fn new(tokens: Vec<Token>, source: String) -> Parser {
+    pub fn new(tokens: Vec<Token>, source: Vec<String>) -> Parser {
         Parser {
             tokens,
             source,
@@ -210,7 +210,8 @@ impl Parser {
     }
 
     fn raise_comp_error(&mut self, comp_len: usize){
-        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr - 1, comp_len, self.peek().line))
+        let line = self.peek().line;
+        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr - 1, comp_len, line))
     }
 
     fn is_at_end(&self) -> bool {

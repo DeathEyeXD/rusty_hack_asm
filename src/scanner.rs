@@ -1,13 +1,12 @@
 use std::fs;
 
-use crate::{Result, Error, error_formatting::ErrorFormatter, parser::Parser};
+use crate::{error_formatting::ErrorFormatter, parser::Parser, Error, Result};
 
 use self::token::Token;
 pub mod token;
 
-
 pub struct Scanner {
-    source: String,
+    source: Vec<String>,
     tokens: Vec<Token>,
     curr: usize,
     start: usize,
@@ -17,14 +16,21 @@ pub struct Scanner {
 
 impl Scanner {
     pub fn with_source(source: String) -> Scanner {
+        let source = source.lines().map(String::from).collect();
         Scanner {
             source,
             tokens: Vec::new(),
             curr: 0,
-            line: 1,
+            line: 0,
             start: 0,
             errors: Vec::new(),
         }
+    }
+
+    fn advance_line(&mut self) {
+        self.line += 1;
+        self.start = 0;
+        self.curr = 0;
     }
 
     pub fn from_path(path: &str) -> crate::Result<Scanner> {
@@ -33,11 +39,11 @@ impl Scanner {
     }
 
     fn is_at_end(&self) -> bool {
-        self.curr >= self.source.len()
+        self.line >= self.source.len()
     }
 
     fn advance(&mut self) -> u8 {
-        let char = self.source.as_bytes()[self.curr];
+        let char = self.peek();
         self.curr += 1;
         char
     }
@@ -47,11 +53,17 @@ impl Scanner {
         self.tokens.push(token);
     }
 
+    fn is_at_line_end(&self) -> bool {
+        self.curr >= self.source[self.line].len()
+    }
+
     fn peek(&self) -> u8 {
         if self.is_at_end() {
             b'\0'
+        } else if self.is_at_line_end() {
+            b'\n'
         } else {
-            self.source.as_bytes()[self.curr]
+            self.source[self.line].as_bytes()[self.curr]
         }
     }
 
@@ -59,10 +71,10 @@ impl Scanner {
         if self.is_at_end() {
             return false;
         }
-        if self.source.as_bytes()[self.curr] != expected {
+        if self.peek() != expected {
             return false;
         }
-        self.curr += 1;
+        self.advance();
         true
     }
     fn number(&mut self) {
@@ -74,7 +86,7 @@ impl Scanner {
     }
 
     fn curr_lexeme(&self) -> &str {
-        &self.source[self.start..self.curr]
+        &self.source[self.line][self.start..self.curr]
     }
 
     fn identifier(&mut self) {
@@ -102,7 +114,7 @@ impl Scanner {
     }
 
     fn skip_comment(&mut self) {
-        while self.peek() != b'\n' && !self.is_at_end() {
+        while !self.is_at_line_end() && !self.is_at_end() {
             self.advance();
         }
     }
@@ -128,12 +140,12 @@ impl Scanner {
             }
             b';' => self.add_token(token::TokenKind::Semicolon),
             b'\n' => {
-                self.line += 1;
                 if let Some(t) = self.tokens.last() {
                     if t.kind != token::TokenKind::NewLine {
                         self.add_token(token::TokenKind::NewLine);
                     }
                 }
+                self.advance_line();
             }
             b' ' | b'\r' | b'\t' => {}
             _ => {
@@ -145,7 +157,7 @@ impl Scanner {
                     self.raise_error("Unexpected character")
                 }
             }
-        }
+        };
     }
 
     pub fn scan_tokens(&mut self) -> bool {
@@ -168,13 +180,16 @@ impl Scanner {
         }
     }
 
-    pub fn run(mut self) -> Result<Parser>{
+    pub fn run(mut self) -> Result<Parser> {
         if self.scan_tokens() {
             self.print_tokens();
             Ok(self.into_parser())
         } else {
             self.print_errors();
-            Err(Error::from(format!("Encountered {} errors, aborting compilation", self.errors.len())))
+            Err(Error::from(format!(
+                "Encountered {} errors, aborting compilation",
+                self.errors.len()
+            )))
         }
     }
 
@@ -203,7 +218,7 @@ impl Scanner {
         eprintln!("Encountered {} errors, aborting", self.errors.len());
     }
 
-    fn into_parser(self) -> Parser{
+    fn into_parser(self) -> Parser {
         Parser::new(self.tokens, self.source)
     }
 }
