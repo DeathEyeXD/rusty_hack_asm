@@ -26,7 +26,7 @@ pub enum TokenKind {
     A,
     Am,
     Ad,
-    AMd,
+    Amd,
 
     Jgt,
     Jeq,
@@ -45,23 +45,29 @@ pub enum TokenKind {
 
 impl TokenKind {
     pub fn is_jump_keyword(&self) -> bool {
-        matches!(self, TokenKind::Jgt
-            | TokenKind::Jeq
-            | TokenKind::Jge
-            | TokenKind::Jlt
-            | TokenKind::Jne
-            | TokenKind::Jle
-            | TokenKind::Jmp)
+        matches!(
+            self,
+            TokenKind::Jgt
+                | TokenKind::Jeq
+                | TokenKind::Jge
+                | TokenKind::Jlt
+                | TokenKind::Jne
+                | TokenKind::Jle
+                | TokenKind::Jmp
+        )
     }
 
     pub fn is_dest_keyword(&self) -> bool {
-        matches!(self, TokenKind::M
-            | TokenKind::D
-            | TokenKind::Md
-            | TokenKind::A
-            | TokenKind::Am
-            | TokenKind::Ad
-            | TokenKind::AMd)
+        matches!(
+            self,
+            TokenKind::M
+                | TokenKind::D
+                | TokenKind::Md
+                | TokenKind::A
+                | TokenKind::Am
+                | TokenKind::Ad
+                | TokenKind::Amd
+        )
     }
 }
 
@@ -89,8 +95,8 @@ impl Token {
             TokenKind::A => "100".to_string(),
             TokenKind::Am => "101".to_string(),
             TokenKind::Ad => "110".to_string(),
-            TokenKind::AMd => "111".to_string(),
-            
+            TokenKind::Amd => "111".to_string(),
+
             TokenKind::Jgt => "001".to_string(),
             TokenKind::Jeq => "010".to_string(),
             TokenKind::Jge => "011".to_string(),
@@ -100,6 +106,37 @@ impl Token {
             TokenKind::Jmp => "111".to_string(),
             TokenKind::Number(n) => format!("{:#016b}", n),
             _ => panic!("{}", format!("Cannot convert '{}' to heck binary", self)),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self.kind {
+            TokenKind::Number(n) => n.to_string().len(),
+            TokenKind::Identifier(ref s) => s.len(),
+            TokenKind::Eof => 0,
+            TokenKind::NewLine
+            | TokenKind::A
+            | TokenKind::D
+            | TokenKind::M
+            | TokenKind::Semicolon
+            | TokenKind::LeftParen
+            | TokenKind::RightParen
+            | TokenKind::At
+            | TokenKind::Equals
+            | TokenKind::Plus
+            | TokenKind::Minus
+            | TokenKind::And
+            | TokenKind::Or
+            | TokenKind::Not => 1,
+            TokenKind::Md | TokenKind::Am | TokenKind::Ad => 2,
+            TokenKind::Amd
+            | TokenKind::Jgt
+            | TokenKind::Jeq
+            | TokenKind::Jge
+            | TokenKind::Jlt
+            | TokenKind::Jne
+            | TokenKind::Jle
+            | TokenKind::Jmp => 3,
         }
     }
 }
@@ -126,7 +163,7 @@ impl Display for Token {
             TokenKind::A => write!(f, "A"),
             TokenKind::Am => write!(f, "Am"),
             TokenKind::Ad => write!(f, "Ad"),
-            TokenKind::AMd => write!(f, "AMd"),
+            TokenKind::Amd => write!(f, "AMd"),
             TokenKind::Jgt => write!(f, "Jgt"),
             TokenKind::Jeq => write!(f, "Jeq"),
             TokenKind::Jge => write!(f, "Jge"),
@@ -137,6 +174,6 @@ impl Display for Token {
             TokenKind::Identifier(s) => write!(f, "Identifier: {}", s),
             TokenKind::Number(n) => write!(f, "Number: {}", n),
         }?;
-        write!(f, ">")
+        write!(f, ", start {}>", self.start)
     }
 }

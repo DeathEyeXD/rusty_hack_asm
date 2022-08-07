@@ -177,6 +177,7 @@ impl Parser {
         let jump = if self.check(token::TokenKind::Semicolon) {
             self.advance(); //skip semicolon
             if !self.peek().kind.is_jump_keyword(){
+                // semicolon is the previous token, and we report the error at next (newline) token so it appears after the semicolon
                 self.raise_error_peek("Expected jump keyword after ';'");
                 return None;
             }
@@ -211,7 +212,8 @@ impl Parser {
 
     fn raise_comp_error(&mut self, comp_len: usize){
         let line = self.peek().line;
-        self.errors.push(ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.curr - 1, comp_len, line))
+        self.errors.push(
+            ErrorFormatter::gen_err("Expected proper computation in c-instruction", &self.source, self.previous().start, comp_len, line))
     }
 
     fn is_at_end(&self) -> bool {
@@ -240,9 +242,9 @@ impl Parser {
             .push(ErrorFormatter::err_from_token(msg, &self.source, token));
     }
     fn raise_error_prev(&mut self, msg: &str) {
-        self.raise_error(msg, self.curr);
+        self.raise_error(msg, self.curr - 1);
     }
     fn raise_error_peek(&mut self, msg: &str) {
-        self.raise_error(msg, self.curr + 1);
+        self.raise_error(msg, self.curr);
     }
 }

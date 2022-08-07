@@ -100,7 +100,7 @@ impl Scanner {
             "A" => token::TokenKind::A,
             "AM" => token::TokenKind::Am,
             "AD" => token::TokenKind::Ad,
-            "AMD" => token::TokenKind::AMd,
+            "AMD" => token::TokenKind::Amd,
             "JGT" => token::TokenKind::Jgt,
             "JEQ" => token::TokenKind::Jeq,
             "JGE" => token::TokenKind::Jge,
