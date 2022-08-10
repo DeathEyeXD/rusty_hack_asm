@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 
 use crate::ast::{AInstruction, CInstruction, Comp, HackInstruction};
 use crate::evaluator::Evaluator;
-use crate::scanner::token::TokenKind;
 use crate::{
     error_formatting::ErrorFormatter,
     scanner::token::{self, Token},
@@ -106,9 +105,6 @@ impl Parser {
             )));
         }
         self.denote_variables();
-        for statement in &self.instructions {
-            println!("{:?}", statement);
-        }
         Ok(Evaluator::new(self.instructions))
     }
 

@@ -40,8 +40,9 @@ impl Evaluator {
         format!("{}.{}", filename, Self::EXTENSION)
     }
 
-    pub fn gen_output_file(self, source: &str) -> Result<()>{
-        fs::write(self.get_output_filename(source), self.evaluate())?;
-        Ok(())
+    pub fn gen_output_file(self, source: &str) -> Result<String>{
+        let path = self.get_output_filename(source);
+        fs::write(&path, self.evaluate())?;
+        Ok(path)
     }
 }

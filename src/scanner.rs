@@ -182,7 +182,7 @@ impl Scanner {
 
     pub fn run(mut self) -> Result<Parser> {
         if self.scan_tokens() {
-            self.print_tokens();
+            // self.print_tokens();
             Ok(self.into_parser())
         } else {
             self.print_errors();

@@ -1,18 +1,4 @@
 use crate::scanner::token::{self, Token};
-#[derive(Debug)]
-pub struct LabelDecl{
-    identifier: String,
-    id: usize,
-}
-
-impl LabelDecl {
-    pub fn new(identifier: String, id: usize) -> LabelDecl {
-        LabelDecl {
-            identifier,
-            id,
-        }
-    }
-}
 
 #[derive(Debug)]
 pub enum HackInstruction {
@@ -26,11 +12,6 @@ pub enum AInstruction {
     Identifier(String),
 }
 
-impl AInstruction{
-    pub fn into_number(&mut self, num: usize){
-        *self = AInstruction::Number(num);
-    }
-}
 
 #[derive(Debug)]
 pub struct CInstruction {
@@ -214,11 +195,10 @@ impl HackInstruction {
     pub fn to_binary(&self) -> String {
         match self {
             HackInstruction::AInstruction(ins) => match ins{
-                AInstruction::Identifier(ident) => {
+                AInstruction::Identifier(_) => {
                     panic!("Internal error: cannot directly convert a instruction with an identifier to binary");
                 }
                 AInstruction::Number(val) => format!("0{:015b}", val),
-                _ => panic!("A instruction must contain a number or identifier"),
             },
             HackInstruction::CInstruction(cinst) => {
                 let mut binary = String::with_capacity(16);
