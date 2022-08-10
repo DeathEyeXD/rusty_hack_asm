@@ -29,6 +29,20 @@ fn test_compilation_add() -> Result<()> {
 }
 
 #[test]
+fn test_compilation_max() -> Result<()> {
+    compile_and_compare("Max")
+}
+#[test]
+fn test_compilation_pong() -> Result<()> {
+    compile_and_compare("Pong")
+}
+
+#[test]
+fn test_compilation_rect() -> Result<()> {
+    compile_and_compare("Rect")
+}
+
+#[test]
 fn test_compilation_max_symboless() -> Result<()> {
     compile_and_compare("MaxL")
 }

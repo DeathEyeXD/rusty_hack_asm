@@ -90,7 +90,7 @@ impl Scanner {
     }
 
     fn identifier(&mut self) {
-        while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
+        while matches!(self.peek(), b'_' | b'.' | b'$' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9') {
             self.advance();
         }
         let token_type = match self.curr_lexeme() {

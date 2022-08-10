@@ -26,7 +26,7 @@ impl Parser {
     const MAX_ADDRESS: usize = 32767;
     pub fn new(tokens: Vec<Token>, source: Vec<String>) -> Parser {
         let predefined_idents = Self::get_predefined_idents();
-        let mut identifier_map = Self::get_default_ident_map();
+        let identifier_map = Self::get_default_ident_map();
 
         Parser {
             tokens,
