@@ -1,15 +1,35 @@
-use crate::scanner::token::{self, Token, TokenKind};
-
+use crate::scanner::token::{self, Token};
 #[derive(Debug)]
-pub enum Statement {
-    Instruction(HackInstruction),
-    LabelDecl(String),
+pub struct LabelDecl{
+    identifier: String,
+    id: usize,
+}
+
+impl LabelDecl {
+    pub fn new(identifier: String, id: usize) -> LabelDecl {
+        LabelDecl {
+            identifier,
+            id,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum HackInstruction {
-    AInstruction(Token),
+    AInstruction(AInstruction),
     CInstruction(CInstruction),
+}
+
+#[derive(Debug)]
+pub enum AInstruction {
+    Number(usize),
+    Identifier(String),
+}
+
+impl AInstruction{
+    pub fn into_number(&mut self, num: usize){
+        *self = AInstruction::Number(num);
+    }
 }
 
 #[derive(Debug)]
@@ -193,11 +213,11 @@ impl Comp {
 impl HackInstruction {
     pub fn to_binary(&self) -> String {
         match self {
-            HackInstruction::AInstruction(token) => match &token.kind {
-                TokenKind::Identifier(ident) => {
-                    unimplemented!();
+            HackInstruction::AInstruction(ins) => match ins{
+                AInstruction::Identifier(ident) => {
+                    panic!("Internal error: cannot directly convert a instruction with an identifier to binary");
                 }
-                TokenKind::Number(val) => format!("0{:015b}", val),
+                AInstruction::Number(val) => format!("0{:015b}", val),
                 _ => panic!("A instruction must contain a number or identifier"),
             },
             HackInstruction::CInstruction(cinst) => {

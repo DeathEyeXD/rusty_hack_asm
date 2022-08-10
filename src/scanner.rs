@@ -78,7 +78,7 @@ impl Scanner {
         true
     }
     fn number(&mut self) {
-        while self.peek().is_ascii_digit() {
+        while self.peek().is_ascii_digit() || self.peek() == b'_'{
             self.advance();
         }
         let literal: usize = self.curr_lexeme().parse().unwrap();
@@ -90,7 +90,7 @@ impl Scanner {
     }
 
     fn identifier(&mut self) {
-        while self.peek().is_ascii_alphanumeric() {
+        while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
             self.advance();
         }
         let token_type = match self.curr_lexeme() {
