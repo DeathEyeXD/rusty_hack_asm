@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::ast::{AInstruction, CInstruction, Comp, HackInstruction};
 use crate::evaluator::Evaluator;
+use crate::scanner::token::TokenKind;
 use crate::{
     error_formatting::ErrorFormatter,
     scanner::token::{self, Token},
@@ -18,13 +19,11 @@ pub struct Parser {
     instructions: Vec<HackInstruction>,
     var_a_ins_indices: Vec<usize>,
     ident_map: HashMap<String, usize>,
-    predefined_idents: HashSet<String>,
 }
 
 impl Parser {
     const MAX_ADDRESS: usize = 32767;
     pub fn new(tokens: Vec<Token>, source: Vec<String>) -> Parser {
-        let predefined_idents = Self::get_predefined_idents();
         let identifier_map = Self::get_default_ident_map();
 
         Parser {
@@ -34,38 +33,37 @@ impl Parser {
             next_ident_id: 16,
             errors: Vec::new(),
             instructions: Vec::new(),
-            var_a_ins_indices: Vec::new(),
-            predefined_idents,
             ident_map: identifier_map,
+            var_a_ins_indices: Vec::new(),
         }
     }
 
-    fn get_predefined_idents() -> HashSet<String> {
-        HashSet::from_iter(vec![
-            "SP".to_string(),
-            "LCL".to_string(),
-            "ARG".to_string(),
-            "THIS".to_string(),
-            "THAT".to_string(),
-            "R0".to_string(),
-            "R1".to_string(),
-            "R2".to_string(),
-            "R3".to_string(),
-            "R4".to_string(),
-            "R5".to_string(),
-            "R6".to_string(),
-            "R7".to_string(),
-            "R8".to_string(),
-            "R9".to_string(),
-            "R10".to_string(),
-            "R11".to_string(),
-            "R12".to_string(),
-            "R13".to_string(),
-            "R14".to_string(),
-            "R15".to_string(),
-            "SCREEN".to_string(),
-            "KBD".to_string(),
-        ])
+    fn is_predefined_ident(&self, ident: &str) -> bool {
+        matches!(
+            ident,
+            "SP" | "LCL"
+                | "ARG"
+                | "THIS"
+                | "THAT"
+                | "R0"
+                | "R1"
+                | "R2"
+                | "R3"
+                | "R4"
+                | "R5"
+                | "R6"
+                | "R7"
+                | "R8"
+                | "R9"
+                | "R10"
+                | "R11"
+                | "R12"
+                | "R13"
+                | "R14"
+                | "R15"
+                | "SCREEN"
+                | "KBD"
+        )
     }
 
     fn get_default_ident_map() -> HashMap<String, usize> {
@@ -171,7 +169,7 @@ impl Parser {
     }
 
     fn add_label_ident(&mut self, ident: String) {
-        if self.predefined_idents.contains(&ident) {
+        if self.is_predefined_ident(&ident) {
             self.raise_error_prev(&format!(
                 "Identifier {} is predefined and cannot be redefined",
                 ident,
@@ -234,7 +232,7 @@ impl Parser {
                 Some(HackInstruction::AInstruction(AInstruction::Number(num)))
             }
             _ => {
-                self.raise_error_prev("Expected identifier or number after '@'");
+                self.raise_error_peek("Expected identifier or number after '@'");
                 None
             } //todo raise an error
         }
@@ -336,12 +334,16 @@ impl Parser {
         }
     }
 
-    fn raise_comp_error(&mut self, comp_len: usize) {
+    fn raise_comp_error(&mut self, mut comp_len: usize) {
         let line = self.peek().line;
+        let start = self.previous().start;
+        if comp_len > 0 && matches!(self.tokens[self.curr + comp_len - 2].kind, TokenKind::NewLine) {
+            comp_len -= 1;
+        }
         self.errors.push(ErrorFormatter::gen_err(
             "Expected proper computation in c-instruction",
             &self.source,
-            self.previous().start,
+            start,
             comp_len,
             line,
         ))

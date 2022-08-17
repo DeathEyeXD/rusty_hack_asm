@@ -2,5 +2,5 @@
 .vscode/launch.json
 *.hack
 *.asm
-!**/asm/*.asm
+!/tests/data/**/*.asm
 !**/expected/*.hack
