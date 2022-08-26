@@ -4,7 +4,7 @@ use self::token::Token;
 pub mod token;
 
 pub struct Scanner<'a> {
-    source: &'a[&'a str],
+    source: &'a [&'a str],
     tokens: Vec<Token<'a>>,
     curr: usize,
     start: usize,
@@ -13,9 +13,8 @@ pub struct Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
-
-    pub fn new(source: &'a[&'a str]) -> Self{
-        Self{
+    pub fn new(source: &'a [&'a str]) -> Self {
+        Self {
             source,
             tokens: Vec::new(),
             curr: 0,
@@ -24,7 +23,6 @@ impl<'a> Scanner<'a> {
             errors: Vec::new(),
         }
     }
-
 
     fn advance_line(&mut self) {
         self.line += 1;
@@ -72,7 +70,7 @@ impl<'a> Scanner<'a> {
         true
     }
     fn number(&mut self) {
-        while self.peek().is_ascii_digit() || self.peek() == b'_'{
+        while self.peek().is_ascii_digit() || self.peek() == b'_' {
             self.advance();
         }
         let literal: u16 = self.curr_lexeme().parse().unwrap();
@@ -87,7 +85,7 @@ impl<'a> Scanner<'a> {
         while matches!(self.peek(), b'_' | b'.' | b'$' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9') {
             self.advance();
         }
-        let token_type= match self.curr_lexeme() {
+        let token_type = match self.curr_lexeme() {
             "M" => token::TokenKind::M,
             "D" => token::TokenKind::D,
             "MD" => token::TokenKind::Md,
@@ -165,7 +163,7 @@ impl<'a> Scanner<'a> {
         self.errors.is_empty()
     }
 
-    fn print_tokens(&self) {
+    fn _print_tokens(&self) {
         for token in &self.tokens {
             println!("{:?}", token);
             if token.kind == token::TokenKind::NewLine {
@@ -176,7 +174,8 @@ impl<'a> Scanner<'a> {
 
     pub fn run(mut self) -> crate::Result<Vec<Token<'a>>> {
         if self.scan_tokens() {
-            self.print_tokens();
+            #[cfg(feature = "trace")]
+            self._print_tokens();
             Ok(self.tokens)
         } else {
             self.print_errors();
@@ -211,5 +210,4 @@ impl<'a> Scanner<'a> {
         eprintln!("{}", self.errors[self.errors.len() - 1]);
         eprintln!("Encountered {} errors, aborting", self.errors.len());
     }
-
 }
