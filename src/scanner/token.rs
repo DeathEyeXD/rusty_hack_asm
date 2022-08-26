@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum TokenKind {
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum TokenKind<'a> {
     //Symbols
     LeftParen,
     RightParen,
@@ -37,13 +37,13 @@ pub enum TokenKind {
     Jmp,
 
     // identifiers
-    Identifier(String),
+    Identifier(&'a str),
 
     // Literals
-    Number(usize),
+    Number(u16, usize),
 }
 
-impl TokenKind {
+impl<'a> TokenKind<'a> {
     pub fn is_jump_keyword(&self) -> bool {
         matches!(
             self,
@@ -71,14 +71,14 @@ impl TokenKind {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Token {
-    pub kind: TokenKind,
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Token<'a> {
+    pub kind: TokenKind<'a>,
     pub line: usize,
     pub start: usize,
 }
 
-impl Token {
+impl<'a> Token<'a> {
     pub fn new(token_type: TokenKind, line: usize, start: usize) -> Token {
         Token {
             kind: token_type,
@@ -86,7 +86,7 @@ impl Token {
             start,
         }
     }
-    pub fn to_binary(&self) -> String {
+    pub fn as_bin_code(&self) -> String {
         match self.kind {
             // A-bit, D-bit, M-bit
             TokenKind::M => "001".to_string(),
@@ -104,15 +104,15 @@ impl Token {
             TokenKind::Jne => "101".to_string(),
             TokenKind::Jle => "110".to_string(),
             TokenKind::Jmp => "111".to_string(),
-            TokenKind::Number(n) => format!("{:#016b}", n),
+            TokenKind::Number(n, _) => format!("{:#016b}", n),
             _ => panic!("{}", format!("Cannot convert '{}' to heck binary", self)),
         }
     }
 
     pub fn len(&self) -> usize {
         match self.kind {
-            TokenKind::Number(n) => n.to_string().len(),
-            TokenKind::Identifier(ref s) => s.len(),
+            TokenKind::Number(_, len) => len,
+            TokenKind::Identifier(s) => s.len(),
             TokenKind::Eof => 0,
             TokenKind::NewLine
             | TokenKind::A
@@ -141,7 +141,7 @@ impl Token {
     }
 }
 
-impl Display for Token {
+impl<'a> Display for Token<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "token<")?;
         match &self.kind {
@@ -172,7 +172,7 @@ impl Display for Token {
             TokenKind::Jle => write!(f, "Jle"),
             TokenKind::Jmp => write!(f, "Jmp"),
             TokenKind::Identifier(s) => write!(f, "Identifier: {}", s),
-            TokenKind::Number(n) => write!(f, "Number: {}", n),
+            TokenKind::Number(n, _) => write!(f, "Number: {}", n),
         }?;
         write!(f, ", start {}>", self.start)
     }

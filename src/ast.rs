@@ -1,27 +1,27 @@
 use crate::scanner::token::{self, Token};
 
 #[derive(Debug)]
-pub enum HackInstruction {
-    AInstruction(AInstruction),
-    CInstruction(CInstruction),
+pub enum HackInstruction<'a> {
+    A(AInstruction<'a>),
+    C(CInstruction<'a>),
 }
 
 #[derive(Debug)]
-pub enum AInstruction {
-    Number(usize),
-    Identifier(String),
+pub enum AInstruction<'a> {
+    Number(u16),
+    Identifier(&'a str),
 }
 
 
 #[derive(Debug)]
-pub struct CInstruction {
-    dest: Option<Token>,
+pub struct CInstruction<'a> {
+    dest: Option<&'a Token<'a>>,
     comp: Comp,
-    jump: Option<Token>,
+    jump: Option<&'a Token<'a>>,
 }
 
-impl CInstruction {
-    pub fn new(dest: Option<Token>, comp: Comp, jump: Option<Token>) -> Self {
+impl<'a> CInstruction<'a> {
+    pub fn new(dest: Option<&'a Token<'a>>, comp: Comp, jump: Option<&'a Token<'a>>) -> Self {
         Self { dest, comp, jump }
     }
 }
@@ -60,8 +60,8 @@ pub enum Comp {
 }
 
 impl Comp {
-    const TOKEN_ONE: token::TokenKind = token::TokenKind::Number(1);
-    const TOKEN_ZERO: token::TokenKind = token::TokenKind::Number(0);
+    const TOKEN_ONE: token::TokenKind<'static> = token::TokenKind::Number(1, 1);
+    const TOKEN_ZERO: token::TokenKind<'static> = token::TokenKind::Number(0, 1);
 
     pub fn to_binary(&self) -> String {
         match self {
@@ -162,6 +162,8 @@ impl Comp {
         }
     }
 
+    // fn check_comp(tokens: &[Token], st
+
     pub fn len(&self) -> usize {
         match self {
             Comp::Zero | Comp::One | Comp::A | Comp::M | Comp::D => 1,
@@ -191,16 +193,16 @@ impl Comp {
         }
     }
 }
-impl HackInstruction {
+impl<'a> HackInstruction<'a> {
     pub fn to_binary(&self) -> String {
         match self {
-            HackInstruction::AInstruction(ins) => match ins{
+            HackInstruction::A(ins) => match ins{
                 AInstruction::Identifier(_) => {
                     panic!("Internal error: cannot directly convert a instruction with an identifier to binary");
                 }
                 AInstruction::Number(val) => format!("0{:015b}", val),
             },
-            HackInstruction::CInstruction(cinst) => {
+            HackInstruction::C(cinst) => {
                 let mut binary = String::with_capacity(16);
                 binary.push_str("111");
                 binary.push_str(&cinst.comp.to_binary());
@@ -208,13 +210,13 @@ impl HackInstruction {
                     &cinst
                         .dest
                         .as_ref()
-                        .map_or(String::from("000"), |token| token.to_binary()),
+                        .map_or(String::from("000"), |token| token.as_bin_code()),
                 );
                 binary.push_str(
                     &cinst
                         .jump
                         .as_ref()
-                        .map_or(String::from("000"), |token| token.to_binary()),
+                        .map_or(String::from("000"), |token| token.as_bin_code()),
                 );
                 binary
             }

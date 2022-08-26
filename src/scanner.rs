@@ -1,41 +1,35 @@
-use std::fs;
-
-use crate::{error_formatting::ErrorFormatter, parser::Parser, Error, Result};
+use crate::{error_formatting::ErrorFormatter, Error};
 
 use self::token::Token;
 pub mod token;
 
-pub struct Scanner {
-    source: Vec<String>,
-    tokens: Vec<Token>,
+pub struct Scanner<'a> {
+    source: &'a[&'a str],
+    tokens: Vec<Token<'a>>,
     curr: usize,
     start: usize,
     line: usize,
     errors: Vec<Error>,
 }
 
-impl Scanner {
-    pub fn with_source(source: String) -> Scanner {
-        let source = source.lines().map(String::from).collect();
-        Scanner {
+impl<'a> Scanner<'a> {
+
+    pub fn new(source: &'a[&'a str]) -> Self{
+        Self{
             source,
             tokens: Vec::new(),
             curr: 0,
-            line: 0,
             start: 0,
+            line: 0,
             errors: Vec::new(),
         }
     }
+
 
     fn advance_line(&mut self) {
         self.line += 1;
         self.start = 0;
         self.curr = 0;
-    }
-
-    pub fn from_path(path: &str) -> crate::Result<Scanner> {
-        let source = fs::read_to_string(path)?;
-        Ok(Scanner::with_source(source))
     }
 
     fn is_at_end(&self) -> bool {
@@ -48,7 +42,7 @@ impl Scanner {
         char
     }
 
-    fn add_token(&mut self, token_type: token::TokenKind) {
+    fn add_token(&mut self, token_type: token::TokenKind<'a>) {
         let token = Token::new(token_type, self.line, self.start);
         self.tokens.push(token);
     }
@@ -81,11 +75,11 @@ impl Scanner {
         while self.peek().is_ascii_digit() || self.peek() == b'_'{
             self.advance();
         }
-        let literal: usize = self.curr_lexeme().parse().unwrap();
-        self.add_token(token::TokenKind::Number(literal));
+        let literal: u16 = self.curr_lexeme().parse().unwrap();
+        self.add_token(token::TokenKind::Number(literal, self.curr - self.start));
     }
 
-    fn curr_lexeme(&self) -> &str {
+    fn curr_lexeme(&self) -> &'a str {
         &self.source[self.line][self.start..self.curr]
     }
 
@@ -93,7 +87,7 @@ impl Scanner {
         while matches!(self.peek(), b'_' | b'.' | b'$' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9') {
             self.advance();
         }
-        let token_type = match self.curr_lexeme() {
+        let token_type= match self.curr_lexeme() {
             "M" => token::TokenKind::M,
             "D" => token::TokenKind::D,
             "MD" => token::TokenKind::Md,
@@ -108,7 +102,7 @@ impl Scanner {
             "JNE" => token::TokenKind::Jne,
             "JLE" => token::TokenKind::Jle,
             "JMP" => token::TokenKind::Jmp,
-            _ => token::TokenKind::Identifier(self.curr_lexeme().to_string()),
+            _ => token::TokenKind::Identifier(self.curr_lexeme()),
         };
         self.add_token(token_type);
     }
@@ -173,17 +167,17 @@ impl Scanner {
 
     fn print_tokens(&self) {
         for token in &self.tokens {
-            println!("{}", token);
+            println!("{:?}", token);
             if token.kind == token::TokenKind::NewLine {
                 println!();
             }
         }
     }
 
-    pub fn run(mut self) -> Result<Parser> {
+    pub fn run(mut self) -> crate::Result<Vec<Token<'a>>> {
         if self.scan_tokens() {
-            // self.print_tokens();
-            Ok(self.into_parser())
+            self.print_tokens();
+            Ok(self.tokens)
         } else {
             self.print_errors();
             Err(Error::from(format!(
@@ -200,7 +194,7 @@ impl Scanner {
     fn raise_error(&mut self, message: &str) {
         self.errors.push(ErrorFormatter::gen_err(
             message,
-            &self.source,
+            self.source,
             self.start,
             self.curr - self.start,
             self.line,
@@ -218,7 +212,4 @@ impl Scanner {
         eprintln!("Encountered {} errors, aborting", self.errors.len());
     }
 
-    fn into_parser(self) -> Parser {
-        Parser::new(self.tokens, self.source)
-    }
 }

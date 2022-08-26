@@ -1,8 +1,7 @@
 use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 use crate::ast::{AInstruction, CInstruction, Comp, HackInstruction};
-use crate::evaluator::Evaluator;
 use crate::scanner::token::TokenKind;
 use crate::{
     error_formatting::ErrorFormatter,
@@ -10,20 +9,20 @@ use crate::{
     Error, Result,
 };
 
-pub struct Parser {
-    source: Vec<String>,
-    tokens: Vec<Token>,
+pub struct Parser<'a> {
+    source: &'a [&'a str],
+    tokens: &'a [Token<'a>],
     curr: usize,
-    next_ident_id: usize,
+    next_ident_id: u16,
     errors: Vec<Error>,
-    instructions: Vec<HackInstruction>,
+    instructions: Vec<HackInstruction<'a>>,
     var_a_ins_indices: Vec<usize>,
-    ident_map: HashMap<String, usize>,
+    ident_map: HashMap<&'a str, u16>,
 }
 
-impl Parser {
-    const MAX_ADDRESS: usize = 32767;
-    pub fn new(tokens: Vec<Token>, source: Vec<String>) -> Parser {
+impl<'a> Parser<'a> {
+    const MAX_ADDRESS: u16 = 32767;
+    pub fn new(tokens: &'a [Token<'a>], source: &'a [&'a str]) -> Self {
         let identifier_map = Self::get_default_ident_map();
 
         Parser {
@@ -66,35 +65,35 @@ impl Parser {
         )
     }
 
-    fn get_default_ident_map() -> HashMap<String, usize> {
+    fn get_default_ident_map() -> HashMap<&'a str, u16> {
         let mut map = HashMap::with_capacity(23);
-        map.insert("SP".to_string(), 0);
-        map.insert("LCL".to_string(), 1);
-        map.insert("ARG".to_string(), 2);
-        map.insert("THIS".to_string(), 3);
-        map.insert("THAT".to_string(), 4);
-        map.insert("R0".to_string(), 0);
-        map.insert("R1".to_string(), 1);
-        map.insert("R2".to_string(), 2);
-        map.insert("R3".to_string(), 3);
-        map.insert("R4".to_string(), 4);
-        map.insert("R5".to_string(), 5);
-        map.insert("R6".to_string(), 6);
-        map.insert("R7".to_string(), 7);
-        map.insert("R8".to_string(), 8);
-        map.insert("R9".to_string(), 9);
-        map.insert("R10".to_string(), 10);
-        map.insert("R11".to_string(), 11);
-        map.insert("R12".to_string(), 12);
-        map.insert("R13".to_string(), 13);
-        map.insert("R14".to_string(), 14);
-        map.insert("R15".to_string(), 15);
-        map.insert("SCREEN".to_string(), 16384);
-        map.insert("KBD".to_string(), 24576);
+        map.insert("SP", 0);
+        map.insert("LCL", 1);
+        map.insert("ARG", 2);
+        map.insert("THIS", 3);
+        map.insert("THAT", 4);
+        map.insert("R0", 0);
+        map.insert("R1", 1);
+        map.insert("R2", 2);
+        map.insert("R3", 3);
+        map.insert("R4", 4);
+        map.insert("R5", 5);
+        map.insert("R6", 6);
+        map.insert("R7", 7);
+        map.insert("R8", 8);
+        map.insert("R9", 9);
+        map.insert("R10", 10);
+        map.insert("R11", 11);
+        map.insert("R12", 12);
+        map.insert("R13", 13);
+        map.insert("R14", 14);
+        map.insert("R15", 15);
+        map.insert("SCREEN", 16384);
+        map.insert("KBD", 24576);
         map
     }
 
-    pub fn run(mut self) -> Result<Evaluator> {
+    pub fn run(mut self) -> Result<Vec<HackInstruction<'a>>> {
         if !self.parse() {
             self.print_errors();
             return Err(Error::from(format!(
@@ -103,12 +102,12 @@ impl Parser {
             )));
         }
         self.denote_variables();
-        Ok(Evaluator::new(self.instructions))
+        Ok(self.instructions)
     }
 
     fn denote_variables(&mut self) {
         for &id in self.var_a_ins_indices.iter() {
-            if let HackInstruction::AInstruction(ins) = &mut self.instructions[id] {
+            if let HackInstruction::A(ins) = &mut self.instructions[id] {
                 let old = std::mem::replace(ins, AInstruction::Number(0));
                 if let AInstruction::Identifier(ident) = old {
                     let val = self.ident_map.entry(ident).or_insert_with(|| {
@@ -116,8 +115,7 @@ impl Parser {
                         self.next_ident_id += 1;
                         index
                     });
-                    self.instructions[id] =
-                        HackInstruction::AInstruction(AInstruction::Number(*val));
+                    self.instructions[id] = HackInstruction::A(AInstruction::Number(*val));
                     continue;
                 }
             }
@@ -142,10 +140,6 @@ impl Parser {
         self.errors.is_empty()
     }
 
-    pub fn had_errors(self) -> bool {
-        !self.errors.is_empty()
-    }
-
     fn statement(&mut self) {
         let success = match self.peek().kind {
             token::TokenKind::LeftParen => self.label_declaration(),
@@ -168,16 +162,16 @@ impl Parser {
         }
     }
 
-    fn add_label_ident(&mut self, ident: String) {
-        if self.is_predefined_ident(&ident) {
+    fn add_label_ident(&mut self, ident: &'a str) {
+        if self.is_predefined_ident(ident) {
             self.raise_error_prev(&format!(
                 "Identifier {} is predefined and cannot be redefined",
                 ident,
             ));
-        } else if self.ident_map.contains_key(&ident) {
+        } else if self.ident_map.contains_key(ident) {
             self.raise_error_prev(&format!("Cannot declare label {} more than once", ident,));
         } else {
-            self.ident_map.insert(ident, self.instructions.len());
+            self.ident_map.insert(ident, self.instructions.len() as u16);
         }
     }
 
@@ -200,7 +194,7 @@ impl Parser {
         }
     }
 
-    fn instruction(&mut self) -> Option<HackInstruction> {
+    fn instruction(&mut self) -> Option<HackInstruction<'a>> {
         if self.check(token::TokenKind::At) {
             self.a_instruction()
         } else {
@@ -208,18 +202,15 @@ impl Parser {
         }
     }
 
-    fn a_instruction(&mut self) -> Option<HackInstruction> {
+    fn a_instruction(&mut self) -> Option<HackInstruction<'a>> {
         self.advance(); //skip @ token
         match self.peek().kind {
-            token::TokenKind::Identifier(ref ident) => {
-                let ident = ident.clone();
+            token::TokenKind::Identifier(ident) => {
                 self.advance();
                 self.var_a_ins_indices.push(self.instructions.len());
-                Some(HackInstruction::AInstruction(AInstruction::Identifier(
-                    ident,
-                )))
+                Some(HackInstruction::A(AInstruction::Identifier(ident)))
             }
-            token::TokenKind::Number(num) => {
+            token::TokenKind::Number(num, _) => {
                 self.advance();
                 if num > Self::MAX_ADDRESS {
                     self.raise_error_prev(
@@ -229,7 +220,7 @@ impl Parser {
                         ), //its not a error that requires synchronising, so we don't return None, but we report the error so it won't compile
                     );
                 }
-                Some(HackInstruction::AInstruction(AInstruction::Number(num)))
+                Some(HackInstruction::A(AInstruction::Number(num)))
             }
             _ => {
                 self.raise_error_peek("Expected identifier or number after '@'");
@@ -265,9 +256,8 @@ impl Parser {
         )
     }
 
-    fn consume_identifier(&mut self, msg: &str) -> Option<String> {
-        if let token::TokenKind::Identifier(identifier) = &self.peek().kind {
-            let identifier = identifier.clone();
+    fn consume_identifier(&mut self, msg: &str) -> Option<&'a str> {
+        if let token::TokenKind::Identifier(identifier) = self.peek().kind {
             self.advance();
             Some(identifier)
         } else {
@@ -283,14 +273,14 @@ impl Parser {
         self.advance(); //skip newline token
     }
 
-    fn c_instruction(&mut self) -> Option<HackInstruction> {
+    fn c_instruction(&mut self) -> Option<HackInstruction<'a>> {
         self.advance();
         let dest = if self.check(token::TokenKind::Equals) {
             if !self.previous().kind.is_dest_keyword() {
                 self.raise_error_prev("Expected destination after '='");
                 return None;
             }
-            let t = self.previous().clone();
+            let t = &self.tokens[self.curr - 1];
             self.advance(); // skip '='
             self.advance();
             Some(t)
@@ -306,24 +296,27 @@ impl Parser {
                 return None;
             }
             self.advance();
-            Some(self.previous().clone())
+            let t = &self.tokens[self.curr - 1];
+            Some(t)
         } else {
             None
         };
-        Some(HackInstruction::CInstruction(CInstruction::new(
-            dest, comp, jump,
-        )))
+        Some(HackInstruction::C(CInstruction::new(dest, comp, jump)))
     }
 
     fn comp(&mut self) -> Option<Comp> {
         let start = self.curr - 1;
         let max_comp_len = cmp::min(3, self.tokens.len() - start);
+        if max_comp_len == 0 {
+            self.raise_comp_error(0);
+            return None;
+        }
         let tokens = &self.tokens[start..start + max_comp_len]
             .iter()
-            .map(|token| token.kind.clone())
+            .map(|token| token.kind)
             .collect::<Vec<token::TokenKind>>();
-        let comp = Comp::from_tokens(tokens);
-        if let Some(comp) = comp {
+
+        if let Some(comp) = Comp::from_tokens(tokens) {
             for _ in 0..comp.len() - 1 {
                 self.advance();
             }
@@ -337,12 +330,17 @@ impl Parser {
     fn raise_comp_error(&mut self, mut comp_len: usize) {
         let line = self.peek().line;
         let start = self.previous().start;
-        if comp_len > 0 && matches!(self.tokens[self.curr + comp_len - 2].kind, TokenKind::NewLine) {
+        if comp_len > 0
+            && matches!(
+                self.tokens[self.curr + comp_len - 2].kind,
+                TokenKind::NewLine
+            )
+        {
             comp_len -= 1;
         }
         self.errors.push(ErrorFormatter::gen_err(
             "Expected proper computation in c-instruction",
-            &self.source,
+            self.source,
             start,
             comp_len,
             line,
@@ -356,11 +354,11 @@ impl Parser {
         matches!(&self.peek().kind, x if *x == token_kind)
     }
 
-    fn previous(&self) -> &Token {
+    fn previous(&self) -> &Token<'a> {
         &self.tokens[self.curr - 1]
     }
 
-    fn peek(&self) -> &Token {
+    fn peek(&self) -> &Token<'a> {
         &self.tokens[self.curr]
     }
 
@@ -372,7 +370,7 @@ impl Parser {
     fn raise_error(&mut self, msg: &str, token_id: usize) {
         let token = &self.tokens[token_id];
         self.errors
-            .push(ErrorFormatter::err_from_token(msg, &self.source, token));
+            .push(ErrorFormatter::err_from_token(msg, self.source, token));
     }
     fn raise_error_prev(&mut self, msg: &str) {
         self.raise_error(msg, self.curr - 1);

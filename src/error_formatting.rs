@@ -5,7 +5,7 @@ pub struct ErrorFormatter;
 impl ErrorFormatter {
     pub fn gen_err(
         message: &str,
-        source: &[String],
+        source: &[&str],
         start: usize,
         len: usize,
         line: usize,
@@ -18,7 +18,7 @@ impl ErrorFormatter {
         ))
     }
 
-    pub fn err_from_token(msg: &str, source: &[String], token: &Token) -> Error {
+    pub fn err_from_token(msg: &str, source: &[&str], token: &Token) -> Error {
         Self::gen_err(msg, source, token.start, token.len(), token.line)
     }
 
