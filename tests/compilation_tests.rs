@@ -1,9 +1,9 @@
 use assert_cmd::assert;
-use hack_asm::Result;
+use rusty_hack_asm::Result;
 use std::fs::{self};
 
 fn run_binary(file: &str) -> assert::Assert {
-    assert_cmd::Command::cargo_bin("hack_asm")
+    assert_cmd::Command::cargo_bin("rusty_hack_asm")
         .unwrap()
         .arg(file)
         .assert()
