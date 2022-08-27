@@ -1,6 +1,6 @@
 use hack_asm::run;
-use hack_asm::Result;
 use hack_asm::Error;
+use hack_asm::Result;
 
 fn main() -> Result<()> {
     let path = file_path()?;

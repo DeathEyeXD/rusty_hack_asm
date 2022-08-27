@@ -12,7 +12,6 @@ pub enum AInstruction<'a> {
     Identifier(&'a str),
 }
 
-
 #[derive(Debug)]
 pub struct CInstruction<'a> {
     dest: Option<&'a Token<'a>>,
@@ -99,7 +98,9 @@ impl Comp {
 
     pub fn from_tokens(tokens: &[token::TokenKind]) -> Option<Self> {
         match tokens {
-            [token::TokenKind::D, token::TokenKind::Or, token::TokenKind::A, ..] => Some(Comp::DOrA),
+            [token::TokenKind::D, token::TokenKind::Or, token::TokenKind::A, ..] => {
+                Some(Comp::DOrA)
+            }
             [token::TokenKind::D, token::TokenKind::And, token::TokenKind::A, ..] => {
                 Some(Comp::DAndA)
             }
@@ -130,7 +131,9 @@ impl Comp {
             [token::TokenKind::Not, token::TokenKind::D, ..] => Some(Comp::NotD),
             [token::TokenKind::Minus, Self::TOKEN_ONE, ..] => Some(Comp::MinusOne),
 
-            [token::TokenKind::D, token::TokenKind::Or, token::TokenKind::M, ..] => Some(Comp::DOrM),
+            [token::TokenKind::D, token::TokenKind::Or, token::TokenKind::M, ..] => {
+                Some(Comp::DOrM)
+            }
             [token::TokenKind::D, token::TokenKind::And, token::TokenKind::M, ..] => {
                 Some(Comp::DAndM)
             }
@@ -196,7 +199,7 @@ impl Comp {
 impl<'a> HackInstruction<'a> {
     pub fn to_binary(&self) -> String {
         match self {
-            HackInstruction::A(ins) => match ins{
+            HackInstruction::A(ins) => match ins {
                 AInstruction::Identifier(_) => {
                     panic!("Internal error: cannot directly convert a instruction with an identifier to binary");
                 }

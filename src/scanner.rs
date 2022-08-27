@@ -13,6 +13,7 @@ pub struct Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
+    const MAX_ADDRESS: usize = 32767;
     pub fn new(source: &'a [&'a str]) -> Self {
         Self {
             source,
@@ -73,8 +74,17 @@ impl<'a> Scanner<'a> {
         while self.peek().is_ascii_digit() || self.peek() == b'_' {
             self.advance();
         }
-        let literal: u16 = self.curr_lexeme().parse().unwrap();
-        self.add_token(token::TokenKind::Number(literal, self.curr - self.start));
+        let literal: usize = self.curr_lexeme().parse().unwrap();
+        if literal > Self::MAX_ADDRESS {
+            self.raise_error(&format!(
+                "Address out of range. Address ranges from 0 to {}",
+                Self::MAX_ADDRESS
+            ));
+        }
+        self.add_token(token::TokenKind::Number(
+            literal as u16,
+            (self.curr - self.start) as u8,
+        ));
     }
 
     fn curr_lexeme(&self) -> &'a str {

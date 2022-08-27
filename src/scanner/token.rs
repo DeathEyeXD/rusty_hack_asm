@@ -40,7 +40,7 @@ pub enum TokenKind<'a> {
     Identifier(&'a str),
 
     // Literals
-    Number(u16, usize),
+    Number(u16, u8),
 }
 
 impl<'a> TokenKind<'a> {
@@ -111,7 +111,7 @@ impl<'a> Token<'a> {
 
     pub fn len(&self) -> usize {
         match self.kind {
-            TokenKind::Number(_, len) => len,
+            TokenKind::Number(_, len) => len as usize,
             TokenKind::Identifier(s) => s.len(),
             TokenKind::Eof => 0,
             TokenKind::NewLine

@@ -1,5 +1,5 @@
 use std::cmp;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 use crate::ast::{AInstruction, CInstruction, Comp, HackInstruction};
 use crate::scanner::token::TokenKind;
@@ -21,7 +21,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    const MAX_ADDRESS: u16 = 32767;
+    const MAX_VAR_ADDRESS: u16 = 16383;
     pub fn new(tokens: &'a [Token<'a>], source: &'a [&'a str]) -> Self {
         let identifier_map = Self::get_default_ident_map();
 
@@ -101,29 +101,32 @@ impl<'a> Parser<'a> {
                 self.errors.len()
             )));
         }
-        self.denote_variables();
+        self.denote_variables()?;
         Ok(self.instructions)
     }
 
-    fn denote_variables(&mut self) {
+    fn denote_variables(&mut self) -> Result<()> {
         for &id in self.var_a_ins_indices.iter() {
-            if let HackInstruction::A(ins) = &mut self.instructions[id] {
-                let old = std::mem::replace(ins, AInstruction::Number(0));
-                if let AInstruction::Identifier(ident) = old {
-                    let val = self.ident_map.entry(ident).or_insert_with(|| {
-                        let index = self.next_ident_id;
-                        self.next_ident_id += 1;
-                        index
-                    });
-                    self.instructions[id] = HackInstruction::A(AInstruction::Number(*val));
-                    continue;
+            if let HackInstruction::A(AInstruction::Identifier(ident)) = self.instructions[id] {
+                if !self.ident_map.contains_key(ident) && self.next_ident_id > Self::MAX_VAR_ADDRESS
+                {
+                    return Err(Error::from(format!(
+                        "Introduced too many variables, max variable count is {} (or max as address is {})",
+                        Self::MAX_VAR_ADDRESS - 15,
+                        Self::MAX_VAR_ADDRESS,
+                    )));
                 }
+                let val = self.ident_map.entry(ident).or_insert_with(|| {
+                    let index = self.next_ident_id;
+                    self.next_ident_id += 1;
+                    index
+                });
+                self.instructions[id] = HackInstruction::A(AInstruction::Number(*val));
+            } else {
+                unimplemented!()
             }
-            panic!(
-                "Internal error: Unexpected instruction {:?}",
-                self.instructions[id]
-            );
         }
+        Ok(())
     }
 
     fn print_errors(&self) {
@@ -212,14 +215,6 @@ impl<'a> Parser<'a> {
             }
             token::TokenKind::Number(num, _) => {
                 self.advance();
-                if num > Self::MAX_ADDRESS {
-                    self.raise_error_prev(
-                        &format!(
-                            "Address out of range, max allowed value is {}",
-                            Self::MAX_ADDRESS
-                        ), //its not a error that requires synchronising, so we don't return None, but we report the error so it won't compile
-                    );
-                }
                 Some(HackInstruction::A(AInstruction::Number(num)))
             }
             _ => {

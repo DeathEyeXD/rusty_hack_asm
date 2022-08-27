@@ -8,12 +8,8 @@ pub struct HackCodeGenerator<'a> {
 
 impl<'a> HackCodeGenerator<'a> {
     const EXTENSION: &'static str = "hack";
-    pub fn new(
-        instructions: Vec<HackInstruction<'a>>,
-    ) -> Self {
-        HackCodeGenerator {
-            instructions,
-        }
+    pub fn new(instructions: Vec<HackInstruction<'a>>) -> Self {
+        HackCodeGenerator { instructions }
     }
 
     pub fn evaluate(&self) -> String {
